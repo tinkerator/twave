@@ -80,6 +80,3 @@ The program `twave` has been developed purely out of self-interest and
 a curiosity for debugging using command line programs only. Should you
 find a bug or want to suggest a feature addition, please use the [bug
 tracker](https://github.com/tinkerator/twave/issues).
-
-
-===
