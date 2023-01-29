@@ -23,6 +23,9 @@ var (
 func defaultTime(val string) time.Time {
 	var t0 time.Time
 	var err error
+	if t0, err = time.Parse("2006-01-02 15:04:05.999999999 07:00", val); err == nil {
+		return t0
+	}
 	if t0, err = time.Parse("2006-01-02 15:04:05 07:00", val); err == nil {
 		return t0
 	}
