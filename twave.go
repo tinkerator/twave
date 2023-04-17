@@ -117,6 +117,7 @@ func (s *ParserState) Augment(tokens []string) {
 			s.Signals = append(s.Signals, &Signal{
 				Label: label,
 				Bits:  bits,
+				Value: "x",
 			})
 		}
 	default:
