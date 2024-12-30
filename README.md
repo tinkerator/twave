@@ -6,7 +6,7 @@ The `twave` tool is a lightweight program to view a `dump.vcd` file in
 ASCII. I've used it for debugging in constrined environments. If
 moving the `dump.vcd` file around is straightforward, you are much
 better off using something more sophisticated like
-[GTKWave](https://gtkwave.sourceforge.net/).
+[GTKWave](https://gtkwave.github.io/gtkwave/).
 
 ## Getting started
 
