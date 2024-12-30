@@ -7,7 +7,7 @@ that drives it (`led_driver_test.v`) and pushes it through its
 paces.
 
 You can compile and run it with
-[iverilog](http://iverilog.icarus.com/) as follows:
+[iverilog](https://steveicarus.github.io/iverilog/) as follows:
 ```
 $ iverilog led_driver_test.v led_driver.v
 $ ./a.out
