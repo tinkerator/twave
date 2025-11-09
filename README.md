@@ -12,7 +12,14 @@ better off using something more sophisticated like
 
 Build from source:
 ```
+$ git clone https://github.com/tinkerator/twave.git
+$ cd twave
 $ go build twave.go
+```
+
+You can install it in your `~/go/bin/` directory with:
+```
+$ go install twave.go
 ```
 
 You can invoke `./twave` against a VCD ([Value Change
