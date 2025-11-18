@@ -15,9 +15,13 @@ import (
 )
 
 var (
-	path = flag.String("file", "", "pathname for dump.vcd file")
-	base = flag.String("time", "", "override the time of the start for trace")
-	syms = flag.String("syms", "", "comma separated symbols to list(default to all symbols)")
+	path    = flag.String("file", "", "pathname for dump.vcd file")
+	base    = flag.String("time", "", "override the time of the start for trace")
+	syms    = flag.String("syms", "", "comma separated symbols to list(default to all symbols)")
+	waved   = flag.Bool("wavy", false, "output in wavy text format")
+	rawTime = flag.Bool("raw", false, "output time in ticks since start")
+	start   = flag.Int("start", -1, "start of displayed trace from this tick")
+	end     = flag.Int("end", -1, "truncate trace at this tick")
 )
 
 func defaultTime(val string) time.Time {
@@ -43,6 +47,11 @@ type Signal struct {
 	Alias []string
 }
 
+type Valued struct {
+	Now   int
+	Value string
+}
+
 type ParserState struct {
 	// What a time unit of 1 in the trace means.
 	Timescale       time.Duration
@@ -55,6 +64,8 @@ type ParserState struct {
 	LabelMaxLength  int
 	Now             int
 	Changed         bool
+	Waves           map[string][]Valued
+	Shortest        int
 }
 
 func (s *ParserState) TimeString(n int) string {
@@ -96,7 +107,9 @@ func (s *ParserState) Augment(tokens []string) {
 			s.LabelMaxLength = 32
 			s.Keys = make(map[string]int)
 		}
-
+		if ts[1] == "parameter" {
+			return
+		}
 		label := fmt.Sprintf("%s.%s", strings.Join(s.Scope, "."), ts[4])
 		bits := 1
 		if n, err := strconv.Atoi(ts[2]); err == nil {
@@ -121,40 +134,73 @@ func (s *ParserState) Augment(tokens []string) {
 			})
 		}
 	default:
-		fmt.Println(s.Scope, ":", ts)
+		if !*waved {
+			fmt.Println(s.Scope, ":", ts)
+		}
 	}
 }
 
 // DumpStateNow displays the state at a single timestamp.
 func (s *ParserState) DumpStateNow() {
-	fmt.Printf(fmt.Sprintf("%%%ds", s.LabelMaxLength), s.TimeString(s.Now))
-	for _, c := range s.Signals {
-		if s.Symbols != nil && !s.Symbols[c.Label] {
-			continue
-		}
-		value := c.Value
-		if c.Bits != 1 && len(value) != c.Bits {
-			if value == "x" || value == "z" {
-				value = strings.Repeat(value, c.Bits)
-			} else {
-				value = strings.Repeat("0", c.Bits-len(value)) + value
-			}
-		}
-		fmt.Printf(" %s", value)
+	if *start != -1 && s.Now < *start {
+		return
 	}
-	fmt.Println()
+	if *end != -1 && s.Now > *end {
+		return
+	}
+	if !*waved {
+		if *rawTime {
+			fmt.Printf(fmt.Sprintf("%%%dd", s.LabelMaxLength), s.Now)
+		} else {
+			fmt.Printf(fmt.Sprintf("%%%ds", s.LabelMaxLength), s.TimeString(s.Now))
+		}
+		for _, c := range s.Signals {
+			if s.Symbols != nil && !s.Symbols[c.Label] {
+				continue
+			}
+			value := c.Value
+			if c.Bits != 1 && len(value) != c.Bits {
+				if value == "x" || value == "z" {
+					value = strings.Repeat(value, c.Bits)
+				} else {
+					value = strings.Repeat("0", c.Bits-len(value)) + value
+				}
+			}
+			fmt.Printf(" %s", value)
+		}
+		fmt.Println()
+	} else {
+		if s.Waves == nil {
+			s.Waves = make(map[string][]Valued)
+		}
+		for _, c := range s.Signals {
+			if s.Symbols != nil && !s.Symbols[c.Label] {
+				continue
+			}
+			ar := s.Waves[c.Label]
+			s.Waves[c.Label] = append(ar, Valued{
+				Now:   s.Now,
+				Value: c.Value,
+			})
+		}
+	}
 }
 
+// Datum consumes a VVD data item and dumps a value if the tokens start with #
 func (s *ParserState) Datum(tokens []string) {
 	switch tokens[0][0] {
 	case '$':
 		return
 	case '#':
+		was := s.Now
 		if s.Changed {
 			s.DumpStateNow()
 		}
 		s.Changed = true
 		s.Now, _ = strconv.Atoi(tokens[0][1:])
+		if delta := s.Now - was; s.Shortest == 0 || was < s.Shortest {
+			s.Shortest = delta
+		}
 		return
 	}
 	if len(tokens) == 2 {
@@ -162,7 +208,7 @@ func (s *ParserState) Datum(tokens []string) {
 		val := tokens[0][1:]
 		i, ok := s.Keys[key]
 		if !ok {
-			log.Fatalf("no mapping for key %q", key)
+			return
 		}
 		s.Signals[i].Value = val
 	} else if len(tokens) == 1 {
@@ -170,7 +216,7 @@ func (s *ParserState) Datum(tokens []string) {
 		val := tokens[0][:1]
 		i, ok := s.Keys[key]
 		if !ok {
-			log.Fatalf("no mapping for key %q", key)
+			return
 		}
 		s.Signals[i].Value = val
 	}
@@ -179,6 +225,9 @@ func (s *ParserState) Datum(tokens []string) {
 // Legend dumps all of the symbol names in a key preface for the text
 // dump.
 func (s *ParserState) Legend() {
+	if *waved {
+		return
+	}
 	for i, c := range s.Signals {
 		if s.Symbols != nil && !s.Symbols[c.Label] {
 			continue
@@ -244,6 +293,12 @@ func main() {
 					state.Augment(compound)
 				} else {
 					state.Legend()
+					if state.Symbols == nil {
+						state.Symbols = make(map[string]bool)
+						for _, sig := range state.Signals {
+							state.Symbols[sig.Label] = true
+						}
+					}
 				}
 				compound = nil
 			}
@@ -253,5 +308,47 @@ func main() {
 	}
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
+	}
+
+	if *waved {
+		for s := range state.Symbols {
+			var sig *Signal
+			for _, sig = range state.Signals {
+				if sig.Label == s {
+					break
+				}
+			}
+			vs, ok := state.Waves[s]
+			if !ok {
+				continue
+			}
+			for j, i := 0, 0; i < state.Now; i += state.Shortest {
+				if i < *start && *start != -1 {
+					continue
+				}
+				if i > *end && *end != -1 {
+					continue
+				}
+				if vs[j].Now < i && j < len(vs)-1 && vs[j+1].Now == i {
+					j++
+				}
+				if sig.Bits == 1 {
+					v := vs[j].Value
+					switch v {
+					case "0":
+						fmt.Print("_")
+					case "1":
+						fmt.Print("^")
+					default:
+						fmt.Print(v)
+					}
+				} else {
+					fmt.Print("x")
+				}
+			}
+			fmt.Printf(" %s\n", s)
+		}
+	} else if *rawTime {
+		fmt.Printf("minimum period: %d\n", state.Shortest)
 	}
 }
