@@ -108,7 +108,7 @@ $ ./twave --file=v/dump.vcd --start=29600 --end=30000
 ```
 
 Partial support for [`wavy`](https://zappem.net/pub/project/wavy/)
-text format is imlpemented in `twave`. To convert the `v/dump.vcd` file to a PNG image`:
+text format is imlpemented in `twave`. To convert the `v/dump.vcd` file to a PNG image:
 
 ```
 $ ./twave --file=v/dump.vcd --wavy > led.wvy
