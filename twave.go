@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -61,6 +62,7 @@ type ParserState struct {
 	Keys            map[string]int
 	Signals         []*Signal
 	Symbols         map[string]bool
+	Ordered         []string
 	LabelMaxLength  int
 	Now             int
 	Changed         bool
@@ -154,9 +156,12 @@ func (s *ParserState) DumpStateNow() {
 		} else {
 			fmt.Printf(fmt.Sprintf("%%%ds", s.LabelMaxLength), s.TimeString(s.Now))
 		}
-		for _, c := range s.Signals {
-			if s.Symbols != nil && !s.Symbols[c.Label] {
-				continue
+		for _, sym := range s.Ordered {
+			var c *Signal
+			for _, c = range s.Signals {
+				if c.Label == sym {
+					break
+				}
 			}
 			value := c.Value
 			if c.Bits != 1 && len(value) != c.Bits {
@@ -228,20 +233,22 @@ func (s *ParserState) Legend() {
 	if *waved {
 		return
 	}
-	for i, c := range s.Signals {
-		if s.Symbols != nil && !s.Symbols[c.Label] {
-			continue
-		}
-		fmt.Printf(fmt.Sprintf("%%%ds", s.LabelMaxLength), c.Label)
-		for j := 0; j <= i; j++ {
-			if s.Symbols != nil && !s.Symbols[s.Signals[j].Label] {
-				continue
+	var kept []int
+	for i, sym := range s.Ordered {
+		var c *Signal
+		for _, c = range s.Signals {
+			if c.Label == sym {
+				break
 			}
+		}
+		kept = append(kept, c.Bits)
+		fmt.Printf(fmt.Sprintf("%%%ds", s.LabelMaxLength), sym)
+		for j := 0; j <= i; j++ {
 			ch := "+"
 			if j != i {
 				ch = "|"
 			}
-			fmt.Print(strings.Repeat("-", s.Signals[j].Bits), ch)
+			fmt.Print(strings.Repeat("-", kept[j]), ch)
 		}
 		fmt.Println()
 	}
@@ -271,6 +278,7 @@ func main() {
 		state.Symbols = make(map[string]bool)
 		for _, s := range strings.Split(*syms, ",") {
 			state.Symbols[s] = true
+			state.Ordered = append(state.Ordered, s)
 		}
 	}
 
@@ -292,13 +300,15 @@ func main() {
 				if !initialized {
 					state.Augment(compound)
 				} else {
-					state.Legend()
 					if state.Symbols == nil {
 						state.Symbols = make(map[string]bool)
 						for _, sig := range state.Signals {
 							state.Symbols[sig.Label] = true
+							state.Ordered = append(state.Ordered, sig.Label)
 						}
+						sort.Strings(state.Ordered)
 					}
+					state.Legend()
 				}
 				compound = nil
 			}
@@ -311,7 +321,7 @@ func main() {
 	}
 
 	if *waved {
-		for s := range state.Symbols {
+		for _, s := range state.Ordered {
 			var sig *Signal
 			for _, sig = range state.Signals {
 				if sig.Label == s {
