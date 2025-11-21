@@ -107,8 +107,9 @@ $ ./twave --file=v/dump.vcd --start=29600 --end=30000
      2022-12-31 14:24:11.000003000000 1 0 0 1 000100101011 000000001101 000000010011
 ```
 
-Partial support for [`wavy`](https://zappem.net/pub/project/wavy/)
-text format is imlpemented in `twave`. To convert the `v/dump.vcd` file to a PNG image:
+Support for [`wavy`](https://zappem.net/pub/project/wavy/) text format
+is imlpemented in `twave`. To convert the `v/dump.vcd` file to a PNG
+image:
 
 ```
 $ ./twave --file=v/dump.vcd --wavy > led.wvy
@@ -132,7 +133,7 @@ $ ~/go/bin/wavy --input led-trunc.wvy --output led-trunc.png
 
 ## TODOs
 
-- the `--wavy` output format does not support multibit signals yet.
+- Nothing planned.
 
 ## License info
 

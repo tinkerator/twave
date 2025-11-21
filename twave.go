@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"os"
 	"sort"
 	"strconv"
@@ -183,6 +184,12 @@ func (s *ParserState) DumpStateNow() {
 				continue
 			}
 			ar := s.Waves[c.Label]
+			if n := len(ar); n > 0 {
+				// drop duplicates
+				if ar[n-1].Value == c.Value {
+					continue
+				}
+			}
 			s.Waves[c.Label] = append(ar, Valued{
 				Now:   s.Now,
 				Value: c.Value,
@@ -332,6 +339,8 @@ func main() {
 			if !ok {
 				continue
 			}
+			var chunks []string
+			var last string
 			for j, i := 0, 0; i < state.Now; i += state.Shortest {
 				if i < *start && *start != -1 {
 					continue
@@ -342,8 +351,10 @@ func main() {
 				if vs[j].Now < i && j < len(vs)-1 && vs[j+1].Now == i {
 					j++
 				}
-				if sig.Bits == 1 {
-					v := vs[j].Value
+				v := vs[j].Value
+				if v == "z" || v == "x" {
+					fmt.Print(v)
+				} else if sig.Bits == 1 {
 					switch v {
 					case "0":
 						fmt.Print("_")
@@ -352,11 +363,29 @@ func main() {
 					default:
 						fmt.Print(v)
 					}
+					last = v
 				} else {
-					fmt.Print("x")
+					n, ok := new(big.Int).SetString(v, 2)
+					if !ok {
+						log.Fatalf("unable to parse %q", v)
+					}
+					t := n.Text(16)
+					if (j+1 < len(vs) && i+state.Shortest >= vs[j+1].Now) || (i+state.Shortest > *end && *end != -1) {
+						chunks = append(chunks, t)
+						fmt.Print(">")
+					} else if last == t {
+						fmt.Print("-")
+					} else {
+						fmt.Print("<")
+					}
+					last = t
 				}
 			}
-			fmt.Printf(" %s\n", s)
+			if len(chunks) != 0 {
+				fmt.Printf(" %s %s\n", s, strings.Join(chunks, ","))
+			} else {
+				fmt.Printf(" %s\n", s)
+			}
 		}
 	} else if *rawTime {
 		fmt.Printf("minimum period: %d\n", state.Shortest)
