@@ -260,7 +260,13 @@ func (s *ParserState) Legend() {
 		fmt.Println()
 	}
 	fmt.Print(strings.Repeat(" ", s.LabelMaxLength))
-	for _, c := range s.Signals {
+	for _, sym := range s.Ordered {
+		var c *Signal
+		for _, c = range s.Signals {
+			if c.Label == sym {
+				break
+			}
+		}
 		if s.Symbols != nil && !s.Symbols[c.Label] {
 			continue
 		}
