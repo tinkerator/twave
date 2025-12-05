@@ -59,6 +59,29 @@ output of `twave` to format poorly on a limited size terminal. The
 `twave` program supports a `--syms` argument to limit the output to
 specific symbol values only.
 
+You can use the `--signals` argument to list which signals are in the dump file:
+```
+$ ./twave --file=v/dump.vcd --signals
+2025/12/04 20:25:18 signals: ["led_driver_test.clk" "led_driver_test.led" "led_driver_test.reset__ack" "led_driver_test.reset__disable" "led_driver_test.script[11:0]" "led_driver_test.target.counter[11:0]" "led_driver_test.target.thresh[11:0]"]
+```
+
+Then you can choose to look only at two of these signals with the `--syms` argument:
+
+```
+$ ./twave --file=v/dump.vcd --syms led_driver_test.clk,led_driver_test.led | head
+[] : [$version Icarus Verilog $end]
+                  led_driver_test.clk-+
+                  led_driver_test.led-|-+
+                                      | |
+     2022-12-31 14:24:11.000000000000 x x
+     2022-12-31 14:24:11.000000010000 0 x
+     2022-12-31 14:24:11.000000020000 0 x
+     2022-12-31 14:24:11.000000030000 1 x
+     2022-12-31 14:24:11.000000040000 1 x
+     2022-12-31 14:24:11.000000050000 0 x
+signal: broken pipe
+```
+
 As with any command line tool that outputs text, you can combine
 `twave` with tools like `grep`, `sed` and `awk` to quickly find
 entries of interest. For example, the list of symbols in a dump can be

@@ -24,6 +24,7 @@ var (
 	rawTime = flag.Bool("raw", false, "output time in ticks since start")
 	start   = flag.Int("start", -1, "start of displayed trace from this tick")
 	end     = flag.Int("end", -1, "truncate trace at this tick")
+	signals = flag.Bool("signals", false, "list signals found in dump file")
 )
 
 func defaultTime(val string) time.Time {
@@ -312,6 +313,14 @@ func main() {
 				initialized = strings.HasPrefix(compound[0], "$enddefinitions")
 				if !initialized {
 					state.Augment(compound)
+				} else if *signals {
+					var list []string
+					for _, sig := range state.Signals {
+						list = append(list, sig.Label)
+					}
+					sort.Strings(list)
+					log.Printf("signals: %q", list)
+					return
 				} else {
 					if state.Symbols == nil {
 						state.Symbols = make(map[string]bool)
